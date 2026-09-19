@@ -1,0 +1,69 @@
+<div class="tk-panel">
+  {{#if active}}
+    <section class="tk-status tk-status-active">
+      <div class="tk-status-line">
+        <span class="tk-recording-dot" aria-hidden="true"></span>
+        <strong>Inspelning pågår</strong>
+      </div>
+
+      <h2>{{active.name}}</h2>
+
+      <div class="tk-metrics">
+        <div class="tk-metric">
+          <strong>{{active.entryCount}}</strong>
+          <span>registrerade slag</span>
+        </div>
+      </div>
+
+      <dl class="tk-meta">
+        <div>
+          <dt>Startad</dt>
+          <dd>{{active.startedAt}}</dd>
+        </div>
+        <div>
+          <dt>Inspelande GM</dt>
+          <dd>{{active.recorder}}</dd>
+        </div>
+      </dl>
+
+      <button type="button" data-action="stop-session" class="tk-primary tk-stop">
+        <i class="fa-solid fa-stop"></i>
+        Avsluta spelmöte
+      </button>
+    </section>
+  {{else}}
+    <section class="tk-status tk-status-idle">
+      <div class="tk-empty-icon" aria-hidden="true">
+        <i class="fa-solid fa-dice-d20"></i>
+      </div>
+
+      <h2>Ingen session aktiv</h2>
+      <p>Starta ett spelmöte så börjar Tärningskrönikan samla Dragonbane-slag.</p>
+
+      <button type="button" data-action="start-session" class="tk-primary">
+        <i class="fa-solid fa-play"></i>
+        Starta spelmöte
+      </button>
+    </section>
+  {{/if}}
+
+  {{#if latest}}
+    <section class="tk-latest">
+      <h3>Senaste avslutade session</h3>
+
+      <div class="tk-session-card">
+        <strong>{{latest.name}}</strong>
+        <span>{{latest.entryCount}} registrerade slag</span>
+        <span>{{latest.endedAt}}{{#if latest.duration}} · {{latest.duration}}{{/if}}</span>
+      </div>
+    </section>
+  {{/if}}
+
+  <footer class="tk-footer">
+    <span>{{savedSessionCount}} sparade sessioner</span>
+    <span>v{{version}}</span>
+    <button type="button" data-action="refresh" class="tk-icon-button" title="Uppdatera">
+      <i class="fa-solid fa-rotate"></i>
+    </button>
+  </footer>
+</div>
