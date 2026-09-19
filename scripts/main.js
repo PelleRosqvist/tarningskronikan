@@ -1,17 +1,8 @@
 const MODULE_ID = "tarningskronikan";
+const DEBUG_RAW_MESSAGES = true;
 
-Hooks.once("init", () => {
-  console.log("Tärningskrönikan | Initierad");
-});
-
-Hooks.once("ready", () => {
-  console.log("Tärningskrönikan | Redo att lyssna på tärningsslag");
-});
-
-Hooks.on("createChatMessage", (message, options, userId) => {
-  if (!Array.isArray(message.rolls) || message.rolls.length === 0) return;
-
-  const rollSummary = message.rolls.map((roll, index) => ({
+function summarizeRolls(rolls = []) {
+  return rolls.map((roll, index) => ({
     index,
     formula: roll.formula ?? null,
     total: roll.total ?? null,
@@ -25,27 +16,95 @@ Hooks.on("createChatMessage", (message, options, userId) => {
       }))
     }))
   }));
+}
 
-  const debugData = {
-    module: MODULE_ID,
+function getDragonbaneOutcome(system = {}) {
+  if (system.isDragon) return "dragon";
+  if (system.isDemon) return "demon";
+  return system.success ? "success" : "failure";
+}
+
+function summarizeDragonbaneSkillTest(message, userId, rolls) {
+  const system = message.system ?? {};
+
+  return {
+    kind: "skillTest",
     messageId: message.id ?? null,
+    timestamp: message.timestamp ?? Date.now(),
+
     userId,
-    author: message.author?.name ?? null,
-    speaker: message.speaker ?? null,
-    flavor: message.flavor ?? null,
-    content: message.content ?? null,
-    flags: message.flags ?? {},
-    rolls: rollSummary
+    userName: message.author?.name ?? null,
+
+    actorId: message.speaker?.actor ?? null,
+    actorName: message.speaker?.alias ?? null,
+    actorUuid: system.actorUuid ?? null,
+
+    skillName: system.skillName ?? null,
+    skillUuid: system.skillUuid ?? null,
+    skillValue: system.skillValue ?? null,
+
+    target: system.target ?? null,
+    result: system.result ?? rolls?.[0]?.total ?? null,
+    success: system.success ?? null,
+    outcome: getDragonbaneOutcome(system),
+
+    isDragon: system.isDragon ?? false,
+    isDemon: system.isDemon ?? false,
+    boons: system.boons ?? 0,
+    banes: system.banes ?? 0,
+    canPush: system.canPush ?? false,
+    autoSuccess: system.autoSuccess ?? false,
+
+    formula: rolls?.[0]?.formula ?? null,
+    rolls
   };
+}
+
+Hooks.once("init", () => {
+  console.log("Tärningskrönikan | Initierad");
+});
+
+Hooks.once("ready", () => {
+  console.log(
+    `Tärningskrönikan | Redo | Foundry ${game.version} | System ${game.system.id} ${game.system.version}`
+  );
+});
+
+Hooks.on("createChatMessage", (message, options, userId) => {
+  if (!Array.isArray(message.rolls) || message.rolls.length === 0) return;
+
+  const rolls = summarizeRolls(message.rolls);
 
   console.log("Tärningskrönikan | Tärningsslag upptäckt!");
-  console.log("Tärningskrönikan | Sammanfattning:");
-  console.log(JSON.stringify(debugData, null, 2));
 
-  try {
-    console.log("Tärningskrönikan | Rå ChatMessage:");
-    console.log(JSON.stringify(message.toObject(), null, 2));
-  } catch (error) {
-    console.warn("Tärningskrönikan | Kunde inte serialisera rått ChatMessage", error);
+  if (game.system.id === "dragonbane" && message.type === "skillTest") {
+    const entry = summarizeDragonbaneSkillTest(message, userId, rolls);
+    console.log(
+      `Tärningskrönikan | Dragonbane skillTest:\n${JSON.stringify(entry, null, 2)}`
+    );
+  } else {
+    const entry = {
+      kind: message.type ?? "unknown",
+      messageId: message.id ?? null,
+      userId,
+      userName: message.author?.name ?? null,
+      actorId: message.speaker?.actor ?? null,
+      actorName: message.speaker?.alias ?? null,
+      rolls
+    };
+
+    console.log(
+      `Tärningskrönikan | Generiskt slag:\n${JSON.stringify(entry, null, 2)}`
+    );
+  }
+
+  if (DEBUG_RAW_MESSAGES) {
+    try {
+      console.log(
+        `Tärningskrönikan | Rå ChatMessage:\n${JSON.stringify(message.toObject(), null, 2)}`
+      );
+    } catch (error) {
+      console.warn("Tärningskrönikan | Kunde inte serialisera rått ChatMessage", error);
+    }
   }
 });
