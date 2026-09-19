@@ -358,15 +358,18 @@ function sessionStatus() {
         sessionsSaved: store.sessions.length
       };
 
-  console.log("Tärningskrönikan | Sessionsstatus:", status);
-  return status;
+  console.log(
+    `Tärningskrönikan | Sessionsstatus:\n${JSON.stringify(status, null, 2)}`
+  );
 }
 
 function latestSession() {
   const store = getSessionStore();
   const session = store.sessions.at(-1) ?? null;
-  console.log("Tärningskrönikan | Senaste session:", session);
-  return session;
+
+  console.log(
+    `Tärningskrönikan | Senaste session:\n${JSON.stringify(session, null, 2)}`
+  );
 }
 
 Hooks.once("init", () => {
@@ -391,8 +394,8 @@ Hooks.once("ready", () => {
   });
 
   game.tarningskronikan = {
-    startSession,
-    stopSession,
+    startSession: async (...args) => { await startSession(...args); },
+    stopSession: async (...args) => { await stopSession(...args); },
     status: sessionStatus,
     latestSession
   };
