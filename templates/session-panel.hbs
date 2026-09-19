@@ -26,10 +26,22 @@
         </div>
       </dl>
 
-      <button type="button" data-action="stop-session" class="tk-primary tk-stop">
-        <i class="fa-solid fa-stop"></i>
-        Avsluta spelmöte
-      </button>
+      <div class="tk-action-row">
+        <button
+          type="button"
+          data-action="show-statistics"
+          data-session-id="{{active.id}}"
+          class="tk-secondary"
+        >
+          <i class="fa-solid fa-chart-column"></i>
+          Visa statistik
+        </button>
+
+        <button type="button" data-action="stop-session" class="tk-primary tk-stop">
+          <i class="fa-solid fa-stop"></i>
+          Avsluta spelmöte
+        </button>
+      </div>
     </section>
   {{else}}
     <section class="tk-status tk-status-idle">
@@ -55,6 +67,16 @@
         <strong>{{latest.name}}</strong>
         <span>{{latest.entryCount}} registrerade slag</span>
         <span>{{latest.endedAt}}{{#if latest.duration}} · {{latest.duration}}{{/if}}</span>
+
+        <button
+          type="button"
+          data-action="show-statistics"
+          data-session-id="{{latest.id}}"
+          class="tk-secondary tk-stats-button"
+        >
+          <i class="fa-solid fa-chart-column"></i>
+          Visa statistik
+        </button>
       </div>
     </section>
   {{/if}}
