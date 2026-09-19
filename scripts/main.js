@@ -1,5 +1,8 @@
 const MODULE_ID = "tarningskronikan";
 const DEBUG_RAW_MESSAGES = true;
+const PUSH_TIMEOUT_MS = 60000;
+
+let pendingPush = null;
 
 function summarizeRolls(rolls = []) {
   return rolls.map((roll, index) => ({
@@ -58,9 +61,60 @@ function extractD20Results(rolls = []) {
   };
 }
 
+function rememberPushFromClick(event) {
+  const button = event.target?.closest?.("button.push-roll");
+  if (!button) return;
+
+  const chatMessageElement = button.closest(".chat-message");
+  const sourceMessageId = chatMessageElement?.dataset?.messageId;
+  if (!sourceMessageId) return;
+
+  const sourceMessage = game.messages.get(sourceMessageId);
+  if (!sourceMessage) return;
+
+  pendingPush = {
+    sourceMessageId,
+    userId: game.user?.id ?? null,
+    actorUuid: sourceMessage.system?.actorUuid ?? null,
+    messageType: sourceMessage.type ?? null,
+    skillUuid: sourceMessage.system?.skillUuid ?? null,
+    sourceResult: sourceMessage.system?.result ?? null,
+    sourceOutcome: getDragonbaneOutcome(sourceMessage.system ?? {}),
+    capturedAt: Date.now()
+  };
+
+  console.log(
+    `Tärningskrönikan | Push registrerad:\n${JSON.stringify(pendingPush, null, 2)}`
+  );
+}
+
+function consumeMatchingPush(message, userId) {
+  if (!pendingPush) return null;
+
+  const age = Date.now() - pendingPush.capturedAt;
+  if (age > PUSH_TIMEOUT_MS) {
+    pendingPush = null;
+    return null;
+  }
+
+  const system = message.system ?? {};
+  const matches =
+    pendingPush.userId === userId &&
+    pendingPush.messageType === message.type &&
+    pendingPush.actorUuid === (system.actorUuid ?? null) &&
+    pendingPush.skillUuid === (system.skillUuid ?? null);
+
+  if (!matches) return null;
+
+  const matched = pendingPush;
+  pendingPush = null;
+  return matched;
+}
+
 function summarizeDragonbaneSkillTest(message, userId, rolls) {
   const system = message.system ?? {};
   const d20 = extractD20Results(rolls);
+  const pushedFrom = consumeMatchingPush(message, userId);
 
   return {
     kind: "skillTest",
@@ -91,7 +145,11 @@ function summarizeDragonbaneSkillTest(message, userId, rolls) {
     boonBaneMode: getBoonBaneMode(system),
 
     pushAvailable: system.canPush ?? false,
-    wasPushed: null,
+    wasPushed: !!pushedFrom,
+    pushSourceMessageId: pushedFrom?.sourceMessageId ?? null,
+    pushOriginalResult: pushedFrom?.sourceResult ?? null,
+    pushOriginalOutcome: pushedFrom?.sourceOutcome ?? null,
+
     autoSuccess: system.autoSuccess ?? false,
 
     formula: rolls?.[0]?.formula ?? null,
@@ -105,6 +163,8 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", () => {
+  document.addEventListener("click", rememberPushFromClick, true);
+
   console.log(
     `Tärningskrönikan | Redo | Foundry ${game.version} | System ${game.system.id} ${game.system.version}`
   );
