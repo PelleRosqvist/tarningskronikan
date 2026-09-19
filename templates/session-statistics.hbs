@@ -1,0 +1,117 @@
+<div class="tk-stats">
+  {{#if missing}}
+    <section class="tk-stats-empty">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <h2>{{sessionName}}</h2>
+    </section>
+  {{else}}
+    <header class="tk-stats-header">
+      <div>
+        <div class="tk-stats-eyebrow">
+          {{#if active}}Aktiv session{{else}}Avslutad session{{/if}}
+        </div>
+        <h1>{{sessionName}}</h1>
+        <p>
+          {{startedAt}}
+          {{#if endedAt}} · avslutad {{endedAt}}{{/if}}
+          {{#if duration}} · {{duration}}{{/if}}
+        </p>
+      </div>
+    </header>
+
+    <section class="tk-stat-grid">
+      <article class="tk-stat-card">
+        <span>Registrerade slag</span>
+        <strong>{{total}}</strong>
+      </article>
+
+      <article class="tk-stat-card">
+        <span>Lyckade</span>
+        <strong>{{successes}}</strong>
+        <small>{{successRate}} %</small>
+      </article>
+
+      <article class="tk-stat-card">
+        <span>Misslyckade</span>
+        <strong>{{failures}}</strong>
+      </article>
+
+      <article class="tk-stat-card tk-stat-dragon">
+        <span>Drakar</span>
+        <strong>{{dragons}}</strong>
+      </article>
+
+      <article class="tk-stat-card tk-stat-demon">
+        <span>Demoner</span>
+        <strong>{{demons}}</strong>
+      </article>
+
+      <article class="tk-stat-card">
+        <span>Pushade slag</span>
+        <strong>{{pushed}}</strong>
+      </article>
+
+      <article class="tk-stat-card">
+        <span>Slag med Boon</span>
+        <strong>{{boonRolls}}</strong>
+      </article>
+
+      <article class="tk-stat-card">
+        <span>Slag med Bane</span>
+        <strong>{{baneRolls}}</strong>
+      </article>
+    </section>
+
+    <section class="tk-stats-section">
+      <div class="tk-section-heading">
+        <div>
+          <h2>d20-fördelning</h2>
+          <p>Visar det resultat som faktiskt räknades. Bortkastade Boon/Bane-tärningar ingår inte.</p>
+        </div>
+      </div>
+
+      <div class="tk-d20-chart" role="img" aria-label="Fördelning av d20-resultat från 1 till 20">
+        {{#each distribution}}
+          <div class="tk-d20-column">
+            <div class="tk-d20-count">{{count}}</div>
+            <div class="tk-d20-bar-track">
+              <div class="tk-d20-bar-fill" style="height: {{heightPercent}}%;"></div>
+            </div>
+            <div class="tk-d20-label">{{value}}</div>
+          </div>
+        {{/each}}
+      </div>
+    </section>
+
+    {{#if actors.length}}
+      <section class="tk-stats-section">
+        <div class="tk-section-heading">
+          <div>
+            <h2>Per rollperson</h2>
+            <p>En enkel sammanställning av registrerade färdighetsslag.</p>
+          </div>
+        </div>
+
+        <div class="tk-actor-table">
+          <div class="tk-actor-row tk-actor-header">
+            <span>Rollperson</span>
+            <span>Slag</span>
+            <span>Lyckade</span>
+            <span>Drakar</span>
+            <span>Demoner</span>
+          </div>
+
+          {{#each actors}}
+            <div class="tk-actor-row">
+              <strong>{{name}}</strong>
+              <span>{{rolls}}</span>
+              <span>{{successes}}</span>
+              <span>{{dragons}}</span>
+              <span>{{demons}}</span>
+            </div>
+          {{/each}}
+        </div>
+      </section>
+    {{/if}}
+  {{/if}}
+</div>
