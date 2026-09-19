@@ -292,7 +292,6 @@ function recordSessionEntry(entry) {
     console.log(
       `Tärningskrönikan | Sparat slag #${session.entries.length} i session "${session.name}"`
     );
-    refreshSessionPanel();
   });
 }
 
@@ -331,7 +330,6 @@ async function startSession(name = "Testsession") {
 
   ui.notifications?.info(`Tärningskrönikan startade sessionen "${session.name}".`);
   console.log("Tärningskrönikan | Session startad:", session);
-  refreshSessionPanel();
 
   return session;
 }
@@ -368,7 +366,6 @@ async function stopSession() {
   );
 
   console.log("Tärningskrönikan | Session avslutad:", session);
-  refreshSessionPanel();
   return session;
 }
 
@@ -508,7 +505,14 @@ class TarningskronikanPanel extends foundry.applications.api.HandlebarsApplicati
 
     if (!scope) return;
 
-    scope.addEventListener("click", async (event) => {
+    if (this._listenerScope === scope && this._clickHandler) return;
+
+    if (this._listenerScope && this._clickHandler) {
+      this._listenerScope.removeEventListener("click", this._clickHandler);
+    }
+
+    this._listenerScope = scope;
+    this._clickHandler = async (event) => {
       const button = event.target?.closest?.("[data-action]");
       if (!button) return;
 
@@ -518,7 +522,6 @@ class TarningskronikanPanel extends foundry.applications.api.HandlebarsApplicati
         const name = await promptForSessionName();
         if (!name) return;
         await startSession(name);
-        this.render({ force: true });
       }
 
       if (action === "stop-session") {
@@ -529,13 +532,14 @@ class TarningskronikanPanel extends foundry.applications.api.HandlebarsApplicati
         });
         if (!confirmed) return;
         await stopSession();
-        this.render({ force: true });
       }
 
       if (action === "refresh") {
         this.render({ force: true });
       }
-    });
+    };
+
+    scope.addEventListener("click", this._clickHandler);
   }
 }
 
