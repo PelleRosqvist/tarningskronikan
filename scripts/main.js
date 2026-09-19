@@ -5,6 +5,7 @@ const PUSH_TIMEOUT_MS = 60000;
 
 const pendingPushes = new Map();
 let sessionWriteQueue = Promise.resolve();
+let sessionPanelApp = null;
 
 function createEmptySessionStore() {
   return {
@@ -43,6 +44,34 @@ function isRecordingClient(session) {
 
 async function saveSessionStore(store) {
   await game.settings.set(MODULE_ID, "sessionStore", store);
+}
+
+function formatDateTime(timestamp) {
+  if (!timestamp) return "";
+  try {
+    return new Intl.DateTimeFormat("sv-SE", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    }).format(new Date(timestamp));
+  } catch {
+    return new Date(timestamp).toLocaleString();
+  }
+}
+
+function formatDuration(startedAt, endedAt) {
+  if (!startedAt || !endedAt) return "";
+  const totalMinutes = Math.max(0, Math.round((endedAt - startedAt) / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours && minutes) return `${hours} h ${minutes} min`;
+  if (hours) return `${hours} h`;
+  return `${minutes} min`;
+}
+
+function refreshSessionPanel() {
+  if (sessionPanelApp?.rendered) {
+    sessionPanelApp.render({ force: true });
+  }
 }
 
 function enqueueSessionWrite(task) {
@@ -263,6 +292,7 @@ function recordSessionEntry(entry) {
     console.log(
       `Tärningskrönikan | Sparat slag #${session.entries.length} i session "${session.name}"`
     );
+    refreshSessionPanel();
   });
 }
 
@@ -301,6 +331,7 @@ async function startSession(name = "Testsession") {
 
   ui.notifications?.info(`Tärningskrönikan startade sessionen "${session.name}".`);
   console.log("Tärningskrönikan | Session startad:", session);
+  refreshSessionPanel();
 
   return session;
 }
@@ -337,6 +368,7 @@ async function stopSession() {
   );
 
   console.log("Tärningskrönikan | Session avslutad:", session);
+  refreshSessionPanel();
   return session;
 }
 
@@ -372,13 +404,162 @@ function latestSession() {
   );
 }
 
+
+async function promptForSessionName() {
+  const dialogV2 = foundry.applications?.api?.DialogV2;
+
+  if (dialogV2?.prompt) {
+    return dialogV2.prompt({
+      window: { title: "Starta spelmöte" },
+      content: `
+        <form class="tarningskronikan-start-form">
+          <div class="form-group">
+            <label for="tk-session-name">Sessionsnamn</label>
+            <input
+              id="tk-session-name"
+              name="sessionName"
+              type="text"
+              value="Spelmöte ${new Date().toLocaleDateString("sv-SE")}"
+              autofocus
+            >
+          </div>
+        </form>
+      `,
+      ok: {
+        icon: "fa-solid fa-play",
+        label: "Starta",
+        callback: (_event, button) =>
+          button.form?.elements?.sessionName?.value?.trim() || "Spelmöte"
+      }
+    });
+  }
+
+  return window.prompt(
+    "Sessionsnamn",
+    `Spelmöte ${new Date().toLocaleDateString("sv-SE")}`
+  );
+}
+
+class TarningskronikanPanel extends foundry.applications.api.HandlebarsApplicationMixin(
+  foundry.applications.api.ApplicationV2
+) {
+  static DEFAULT_OPTIONS = {
+    id: "tarningskronikan-panel",
+    classes: ["tarningskronikan-panel"],
+    window: {
+      title: "Tärningskrönikan",
+      icon: "fas fa-dice-d20",
+      resizable: false
+    },
+    position: {
+      width: 430,
+      height: "auto"
+    }
+  };
+
+  static PARTS = {
+    root: {
+      template: `modules/${MODULE_ID}/templates/session-panel.hbs`,
+      root: true
+    }
+  };
+
+  async _prepareContext() {
+    const store = getSessionStore();
+    const active = getActiveSession(store);
+    const latestCompleted =
+      [...store.sessions].reverse().find((session) => !!session.endedAt) ?? null;
+
+    return {
+      isGM: !!game.user?.isGM,
+      active: active
+        ? {
+            id: active.id,
+            name: active.name,
+            startedAt: formatDateTime(active.startedAt),
+            entryCount: active.entries?.length ?? 0,
+            recorder: active.recorderUserName ?? ""
+          }
+        : null,
+      latest: latestCompleted
+        ? {
+            id: latestCompleted.id,
+            name: latestCompleted.name,
+            endedAt: formatDateTime(latestCompleted.endedAt),
+            entryCount: latestCompleted.entries?.length ?? 0,
+            duration: formatDuration(
+              latestCompleted.startedAt,
+              latestCompleted.endedAt
+            )
+          }
+        : null,
+      savedSessionCount: store.sessions.length,
+      version: game.modules.get(MODULE_ID)?.version ?? ""
+    };
+  }
+
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+
+    const scope =
+      this.window?.content ??
+      this.element ??
+      document.getElementById(this.id);
+
+    if (!scope) return;
+
+    scope.addEventListener("click", async (event) => {
+      const button = event.target?.closest?.("[data-action]");
+      if (!button) return;
+
+      const action = button.dataset.action;
+
+      if (action === "start-session") {
+        const name = await promptForSessionName();
+        if (!name) return;
+        await startSession(name);
+        this.render({ force: true });
+      }
+
+      if (action === "stop-session") {
+        const confirmed = await foundry.applications.api.DialogV2.confirm({
+          window: { title: "Avsluta spelmöte" },
+          content: "<p>Avsluta den aktiva Tärningskrönikan-sessionen?</p>",
+          modal: true
+        });
+        if (!confirmed) return;
+        await stopSession();
+        this.render({ force: true });
+      }
+
+      if (action === "refresh") {
+        this.render({ force: true });
+      }
+    });
+  }
+}
+
+function openSessionPanel() {
+  if (!game.user?.isGM) {
+    ui.notifications?.warn("Tärningskrönikans sessionspanel är just nu endast för GM.");
+    return;
+  }
+
+  if (!sessionPanelApp) {
+    sessionPanelApp = new TarningskronikanPanel();
+  }
+
+  sessionPanelApp.render(true);
+}
+
 Hooks.once("init", () => {
   game.settings.register(MODULE_ID, "sessionStore", {
     name: "Tärningskrönikan sessionsdata",
     scope: "world",
     config: false,
     type: Object,
-    default: createEmptySessionStore()
+    default: createEmptySessionStore(),
+    onChange: () => refreshSessionPanel()
   });
 
   console.log("Tärningskrönikan | Initierad");
@@ -397,7 +578,8 @@ Hooks.once("ready", () => {
     startSession: async (...args) => { await startSession(...args); },
     stopSession: async (...args) => { await stopSession(...args); },
     status: sessionStatus,
-    latestSession
+    latestSession,
+    open: openSessionPanel
   };
 
   console.log(
@@ -432,4 +614,44 @@ Hooks.on("createChatMessage", (message, options, userId) => {
       console.warn("Tärningskrönikan | Kunde inte serialisera rått ChatMessage", error);
     }
   }
+});
+
+
+Hooks.on("getSceneControlButtons", (controls) => {
+  if (!game.user?.isGM || !controls) return;
+
+  const tokenControls = Array.isArray(controls)
+    ? controls.find((control) => control?.name === "token")
+    : controls.tokens ?? controls.token;
+
+  if (!tokenControls) return;
+
+  const tool = {
+    name: "tarningskronikan",
+    title: "Tärningskrönikan",
+    icon: "fas fa-dice-d20",
+    button: true,
+    visible: true,
+    onChange: () => openSessionPanel()
+  };
+
+  if (Array.isArray(tokenControls.tools)) {
+    const existing = tokenControls.tools.findIndex(
+      (entry) => entry?.name === tool.name
+    );
+
+    if (existing >= 0) {
+      tokenControls.tools[existing] = {
+        ...tokenControls.tools[existing],
+        ...tool
+      };
+    } else {
+      tokenControls.tools.push(tool);
+    }
+
+    return;
+  }
+
+  tokenControls.tools ??= {};
+  tokenControls.tools[tool.name] = tool;
 });

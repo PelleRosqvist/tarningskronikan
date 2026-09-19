@@ -2,7 +2,7 @@
   "id": "tarningskronikan",
   "title": "Tärningskrönikan",
   "description": "Registrerar tärningsslag under spelmöten och skapar statistik och sessionsrapporter.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "authors": [
     {
       "name": "Per Rosqvist"
@@ -18,5 +18,8 @@
   "download": "https://github.com/PelleRosqvist/tarningskronikan/archive/refs/heads/main.zip",
   "esmodules": [
     "scripts/main.js"
+  ],
+  "styles": [
+    "styles/tarningskronikan.css"
   ]
 }
