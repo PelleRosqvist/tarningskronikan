@@ -558,7 +558,8 @@ Hooks.once("init", () => {
     scope: "world",
     config: false,
     type: Object,
-    default: createEmptySessionStore()
+    default: createEmptySessionStore(),
+    onChange: () => refreshSessionPanel()
   });
 
   console.log("Tärningskrönikan | Initierad");
