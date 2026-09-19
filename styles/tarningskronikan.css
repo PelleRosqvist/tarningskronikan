@@ -1,0 +1,137 @@
+.tarningskronikan-panel .window-content {
+  padding: 0;
+}
+
+.tk-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.tk-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border-light-2, rgba(255, 255, 255, 0.16));
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.tk-status h2,
+.tk-latest h3 {
+  margin: 0;
+}
+
+.tk-status-idle {
+  text-align: center;
+  align-items: stretch;
+}
+
+.tk-empty-icon {
+  font-size: 2rem;
+  opacity: 0.75;
+}
+
+.tk-status-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tk-recording-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #b91c1c;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.18);
+}
+
+.tk-metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.tk-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.tk-metric strong {
+  font-size: 1.6rem;
+}
+
+.tk-meta {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.tk-meta div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.5rem;
+}
+
+.tk-meta dt {
+  font-weight: 700;
+}
+
+.tk-meta dd {
+  margin: 0;
+}
+
+.tk-primary {
+  width: 100%;
+  min-height: 2.5rem;
+  font-weight: 700;
+}
+
+.tk-stop {
+  margin-top: 0.2rem;
+}
+
+.tk-latest {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tk-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border-light-2, rgba(255, 255, 255, 0.16));
+  border-radius: 6px;
+}
+
+.tk-session-card span {
+  opacity: 0.8;
+}
+
+.tk-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.tk-footer span:nth-child(2) {
+  margin-left: auto;
+}
+
+.tk-icon-button {
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
