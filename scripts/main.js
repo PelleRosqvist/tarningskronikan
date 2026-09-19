@@ -545,12 +545,14 @@ function openStatistics(sessionId) {
     return;
   }
 
-  if (statisticsApp?.rendered) {
-    statisticsApp.close();
+  if (!statisticsApp) {
+    statisticsApp = new TarningskronikanStatistics(sessionId);
+    statisticsApp.render(true);
+    return;
   }
 
-  statisticsApp = new TarningskronikanStatistics(sessionId);
-  statisticsApp.render(true);
+  statisticsApp.sessionId = sessionId;
+  statisticsApp.render({ force: true });
 }
 
 async function promptForSessionName() {
