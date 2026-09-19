@@ -6,6 +6,7 @@ const PUSH_TIMEOUT_MS = 60000;
 const pendingPushes = new Map();
 let sessionWriteQueue = Promise.resolve();
 let sessionPanelApp = null;
+let statisticsApp = null;
 
 function createEmptySessionStore() {
   return {
@@ -71,6 +72,10 @@ function formatDuration(startedAt, endedAt) {
 function refreshSessionPanel() {
   if (sessionPanelApp?.rendered) {
     sessionPanelApp.render({ force: true });
+  }
+
+  if (statisticsApp?.rendered) {
+    statisticsApp.render({ force: true });
   }
 }
 
@@ -402,6 +407,152 @@ function latestSession() {
 }
 
 
+function calculateSessionStatistics(session) {
+  const entries = Array.isArray(session?.entries) ? session.entries : [];
+
+  const successes = entries.filter((entry) => entry.success === true).length;
+  const failures = entries.filter((entry) => entry.success === false).length;
+  const dragons = entries.filter((entry) => entry.isDragon === true).length;
+  const demons = entries.filter((entry) => entry.isDemon === true).length;
+  const pushed = entries.filter((entry) => entry.wasPushed === true).length;
+  const boonRolls = entries.filter((entry) => (Number(entry.boons) || 0) > 0).length;
+  const baneRolls = entries.filter((entry) => (Number(entry.banes) || 0) > 0).length;
+
+  const d20Counts = Array.from({ length: 20 }, (_, index) => ({
+    value: index + 1,
+    count: 0
+  }));
+
+  const actorMap = new Map();
+
+  for (const entry of entries) {
+    for (const value of entry.d20?.kept ?? []) {
+      if (Number.isInteger(value) && value >= 1 && value <= 20) {
+        d20Counts[value - 1].count += 1;
+      }
+    }
+
+    const actorName = entry.actorName || "Okänd";
+    const actor = actorMap.get(actorName) ?? {
+      name: actorName,
+      rolls: 0,
+      successes: 0,
+      dragons: 0,
+      demons: 0
+    };
+
+    actor.rolls += 1;
+    if (entry.success === true) actor.successes += 1;
+    if (entry.isDragon === true) actor.dragons += 1;
+    if (entry.isDemon === true) actor.demons += 1;
+    actorMap.set(actorName, actor);
+  }
+
+  const maxD20Count = Math.max(1, ...d20Counts.map((item) => item.count));
+  const distribution = d20Counts.map((item) => ({
+    ...item,
+    heightPercent: Math.round((item.count / maxD20Count) * 100)
+  }));
+
+  const actors = [...actorMap.values()]
+    .sort((a, b) => b.rolls - a.rolls || a.name.localeCompare(b.name, "sv"));
+
+  const total = entries.length;
+  const successRate = total ? Math.round((successes / total) * 100) : 0;
+
+  return {
+    total,
+    successes,
+    failures,
+    successRate,
+    dragons,
+    demons,
+    pushed,
+    boonRolls,
+    baneRolls,
+    distribution,
+    actors
+  };
+}
+
+class TarningskronikanStatistics extends foundry.applications.api.HandlebarsApplicationMixin(
+  foundry.applications.api.ApplicationV2
+) {
+  static DEFAULT_OPTIONS = {
+    id: "tarningskronikan-statistics",
+    classes: ["tarningskronikan-statistics"],
+    window: {
+      title: "Tärningskrönikan · Statistik",
+      icon: "fas fa-chart-column",
+      resizable: true
+    },
+    position: {
+      width: 720,
+      height: 650
+    }
+  };
+
+  static PARTS = {
+    root: {
+      template: `modules/${MODULE_ID}/templates/session-statistics.hbs`,
+      root: true
+    }
+  };
+
+  constructor(sessionId, options = {}) {
+    super(options);
+    this.sessionId = sessionId;
+  }
+
+  async _prepareContext() {
+    const store = getSessionStore();
+    const session = store.sessions.find((item) => item.id === this.sessionId) ?? null;
+
+    if (!session) {
+      return {
+        missing: true,
+        sessionName: "Sessionen kunde inte hittas"
+      };
+    }
+
+    const stats = calculateSessionStatistics(session);
+
+    return {
+      missing: false,
+      sessionName: session.name,
+      active: session.id === store.activeSessionId,
+      startedAt: formatDateTime(session.startedAt),
+      endedAt: session.endedAt ? formatDateTime(session.endedAt) : "",
+      duration: session.endedAt
+        ? formatDuration(session.startedAt, session.endedAt)
+        : "",
+      ...stats
+    };
+  }
+}
+
+function openStatistics(sessionId) {
+  if (!game.user?.isGM) {
+    ui.notifications?.warn("Tärningskrönikans statistik är just nu endast för GM.");
+    return;
+  }
+
+  const store = getSessionStore();
+  const session = store.sessions.find((item) => item.id === sessionId);
+
+  if (!session) {
+    ui.notifications?.warn("Tärningskrönikan kunde inte hitta den valda sessionen.");
+    return;
+  }
+
+  if (statisticsApp?.rendered) {
+    statisticsApp.close();
+  }
+
+  statisticsApp = new TarningskronikanStatistics(sessionId);
+  statisticsApp.render(true);
+}
+
 async function promptForSessionName() {
   const dialogV2 = foundry.applications?.api?.DialogV2;
 
@@ -534,6 +685,11 @@ class TarningskronikanPanel extends foundry.applications.api.HandlebarsApplicati
         await stopSession();
       }
 
+      if (action === "show-statistics") {
+        const sessionId = button.dataset.sessionId;
+        if (sessionId) openStatistics(sessionId);
+      }
+
       if (action === "refresh") {
         this.render({ force: true });
       }
@@ -583,7 +739,8 @@ Hooks.once("ready", () => {
     stopSession: async (...args) => { await stopSession(...args); },
     status: sessionStatus,
     latestSession,
-    open: openSessionPanel
+    open: openSessionPanel,
+    statistics: openStatistics
   };
 
   console.log(
