@@ -2,7 +2,7 @@
 
 Dice statistics and session reports for Foundry VTT, with Dragonbane / Drakar och Demoner support.
 
-> **Status:** Early prototype. Version 0.1.0 only verifies that Foundry dice rolls can be detected.
+> **Status:** Early prototype. Version 0.2.0 can start a test session and persist Dragonbane skill-test rolls in the Foundry world.
 
 ## Installera prototypen
 
@@ -15,16 +15,34 @@ Dice statistics and session reports for Foundry VTT, with Dragonbane / Drakar oc
 4. Installera modulen.
 5. Starta din testvärld och aktivera **Tärningskrönikan** under **Manage Modules**.
 
-## Test
+## Testa sessionslagring
 
-Öppna webbläsarens utvecklarkonsol med F12 och gör ett tärningsslag.
+Öppna webbläsarens utvecklarkonsol med F12.
 
-Prototypen ska skriva bland annat:
+Starta en test-session:
 
-```text
-Tärningskrönikan | Initierad
-Tärningskrönikan | Redo att lyssna på tärningsslag
-Tärningskrönikan | Tärningsslag upptäckt!
+```js
+await game.tarningskronikan.startSession("Testsession")
 ```
 
-Ingen statistik sparas ännu.
+Gör några färdighetsslag. Version 0.2.0 sparar för närvarande bara Dragonbane `skillTest`.
+
+Visa status:
+
+```js
+game.tarningskronikan.status()
+```
+
+Avsluta sessionen:
+
+```js
+await game.tarningskronikan.stopSession()
+```
+
+Visa senast sparade session och dess registrerade slag:
+
+```js
+game.tarningskronikan.latestSession()
+```
+
+Sessionsdata sparas som en dold world setting i Foundry-världen. Endast den GM som startade sessionen skriver till sessionsarkivet.
