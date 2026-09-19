@@ -2,7 +2,7 @@
 
 Dice statistics and session reports for Foundry VTT, with Dragonbane / Drakar och Demoner support.
 
-> **Status:** Early prototype. Version 0.3.0 adds the first in-Foundry GM session panel.
+> **Status:** Early prototype. Version 0.4.0 adds the first in-Foundry session statistics view.
 
 ## Installera prototypen
 
@@ -25,7 +25,8 @@ Som GM:
 4. Ange sessionsnamn.
 5. Gör Dragonbane-färdighetsslag som vanligt.
 6. Panelen visar löpande antal registrerade slag.
-7. Klicka **Avsluta spelmöte** när sessionen är klar.
+7. Klicka **Visa statistik** för en enkel sessionsöversikt.
+8. Klicka **Avsluta spelmöte** när sessionen är klar.
 
 Version 0.3.0 sparar fortfarande endast Dragonbane `skillTest`.
 
@@ -40,3 +41,18 @@ game.tarningskronikan.status()
 game.tarningskronikan.latestSession()
 game.tarningskronikan.open()
 ```
+
+
+## Enkel statistik i v0.4.0
+
+Statistikfönstret visar:
+
+- antal registrerade färdighetsslag
+- lyckade och misslyckade slag samt lyckandegrad
+- antal Drakar och Demoner
+- antal pushade slag
+- antal slag med Boon respektive Bane
+- d20-fördelning 1–20 för den tärning som faktiskt räknades
+- enkel sammanställning per rollperson
+
+Push-omslag räknas som ett eget registrerat slag. Vid Boon/Bane räknas endast den behållna d20:n i huvudfördelningen.
