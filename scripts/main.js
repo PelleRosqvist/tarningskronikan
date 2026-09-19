@@ -24,8 +24,43 @@ function getDragonbaneOutcome(system = {}) {
   return system.success ? "success" : "failure";
 }
 
+function getBoonBaneMode(system = {}) {
+  const boons = Number(system.boons) || 0;
+  const banes = Number(system.banes) || 0;
+
+  if (boons > 0 && banes === 0) return "boon";
+  if (banes > 0 && boons === 0) return "bane";
+  if (boons === 0 && banes === 0) return "normal";
+  return "mixed";
+}
+
+function extractD20Results(rolls = []) {
+  const all = [];
+
+  for (const roll of rolls) {
+    for (const die of roll.dice ?? []) {
+      if (die.faces !== 20) continue;
+
+      for (const result of die.results ?? []) {
+        all.push({
+          value: result.result ?? null,
+          active: result.active === true,
+          discarded: result.discarded === true
+        });
+      }
+    }
+  }
+
+  return {
+    all,
+    kept: all.filter((entry) => entry.active && !entry.discarded).map((entry) => entry.value),
+    discarded: all.filter((entry) => entry.discarded || !entry.active).map((entry) => entry.value)
+  };
+}
+
 function summarizeDragonbaneSkillTest(message, userId, rolls) {
   const system = message.system ?? {};
+  const d20 = extractD20Results(rolls);
 
   return {
     kind: "skillTest",
@@ -50,12 +85,17 @@ function summarizeDragonbaneSkillTest(message, userId, rolls) {
 
     isDragon: system.isDragon ?? false,
     isDemon: system.isDemon ?? false,
-    boons: system.boons ?? 0,
-    banes: system.banes ?? 0,
-    canPush: system.canPush ?? false,
+
+    boons: Number(system.boons) || 0,
+    banes: Number(system.banes) || 0,
+    boonBaneMode: getBoonBaneMode(system),
+
+    pushAvailable: system.canPush ?? false,
+    wasPushed: null,
     autoSuccess: system.autoSuccess ?? false,
 
     formula: rolls?.[0]?.formula ?? null,
+    d20,
     rolls
   };
 }
