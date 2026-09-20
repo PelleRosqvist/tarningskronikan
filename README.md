@@ -2,7 +2,7 @@
 
 Dice statistics and session reports for Foundry VTT, with Dragonbane / Drakar och Demoner support.
 
-> **Status:** Early prototype. Version 0.4.0 adds the first in-Foundry session statistics view.
+> **Status:** Early prototype. Version 0.5.0 adds per-character skill statistics and the first chronicle highlights.
 
 ## Installera prototypen
 
@@ -56,3 +56,13 @@ Statistikfönstret visar:
 - enkel sammanställning per rollperson
 
 Push-omslag räknas som ett eget registrerat slag. Vid Boon/Bane räknas endast den behållna d20:n i huvudfördelningen.
+
+
+## Fördjupad statistik i v0.5.0
+
+- rollpersoner grupperas på `actorUuid` i stället för visningsnamn
+- varje rollperson får en utfällbar färdighetsöversikt
+- per färdighet visas antal slag, lyckade, lyckandegrad, Drakar, Demoner och Pushar
+- statistikvyn visar ett första block med **Ur kvällens krönika**
+- höjdpunkterna visar mest använda färdighet samt rollperson med flest Drakar, Demoner och Pushar när sådana finns
+- delade förstaplaceringar visas tillsammans
