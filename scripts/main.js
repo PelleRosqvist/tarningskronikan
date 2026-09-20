@@ -600,7 +600,7 @@ function calculateSessionStatistics(session) {
     mostUsedSkill
       ? {
           icon: "fa-solid fa-hand-sparkles",
-          title: "Mest använd färdighet",
+          title: "Mest använda test",
           primary: mostUsedSkill.name,
           detail: `${mostUsedSkill.rolls} slag`
         }
