@@ -158,14 +158,10 @@
 }
 
 .tarningskronikan-statistics .window-content {
-  min-height: 0;
   padding: 0;
-  overflow: hidden;
-}
-
-.tarningskronikan-statistics .window-content > .tk-stats {
-  height: 100%;
-  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 .tk-stats {
@@ -173,12 +169,9 @@
   flex-direction: column;
   gap: 1rem;
   box-sizing: border-box;
-  height: 100%;
-  min-height: 0;
+  width: 100%;
+  min-height: 100%;
   padding: 1rem;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 .tk-stats-header {
