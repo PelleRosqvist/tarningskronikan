@@ -710,7 +710,7 @@ async function configureDiscordWebhook() {
             name="discordWebhook"
             type="password"
             value="${escapedExisting}"
-            autocomplete="off"
+            autocomplete="new-password"
             placeholder="https://discord.com/api/webhooks/..."
           >
           <p class="hint">
@@ -904,9 +904,17 @@ async function sendSessionToDiscord(sessionId) {
     return true;
   } catch (error) {
     console.error("Tärningskrönikan | Discord-export misslyckades", error);
-    ui.notifications?.error(
-      "Kunde inte skicka till Discord. Se webbläsarkonsolen för detaljer."
-    );
+
+    if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
+      ui.notifications?.error(
+        "Discord-anropet blockerades eller nådde inte fram. Om konsolen visar ERR_BLOCKED_BY_CLIENT, tillåt discord.com/api/webhooks i adblocker eller privacy-skydd för Forge, eller prova en webbläsare utan sådant skydd."
+      );
+    } else {
+      ui.notifications?.error(
+        "Kunde inte skicka till Discord. Se webbläsarkonsolen för detaljer."
+      );
+    }
+
     return false;
   }
 }
