@@ -624,8 +624,8 @@ class TarningskronikanStatistics extends foundry.applications.api.HandlebarsAppl
       resizable: true
     },
     position: {
-      width: 720,
-      height: 650
+      width: 860,
+      height: 720
     }
   };
 
