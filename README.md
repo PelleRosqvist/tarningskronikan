@@ -2,7 +2,7 @@
 
 Dice statistics and session reports for Foundry VTT, with Dragonbane / Drakar och Demoner support.
 
-> **Status:** Early prototype. Version 0.5.0 adds per-character skill statistics and the first chronicle highlights.
+> **Status:** Early prototype. Version 0.6.0 records Dragonbane skill and attribute tests and includes per-character statistics.
 
 ## Installera prototypen
 
@@ -28,7 +28,7 @@ Som GM:
 7. Klicka **Visa statistik** för en enkel sessionsöversikt.
 8. Klicka **Avsluta spelmöte** när sessionen är klar.
 
-Version 0.3.0 sparar fortfarande endast Dragonbane `skillTest`.
+Version 0.6.0 sparar Dragonbane `skillTest` och `attributeTest`.
 
 Sessionsdata sparas som en dold world setting i Foundry-världen. Endast den GM som startade sessionen skriver till sessionsarkivet.
 
@@ -66,3 +66,20 @@ Push-omslag räknas som ett eget registrerat slag. Vid Boon/Bane räknas endast 
 - statistikvyn visar ett första block med **Ur kvällens krönika**
 - höjdpunkterna visar mest använda färdighet samt rollperson med flest Drakar, Demoner och Pushar när sådana finns
 - delade förstaplaceringar visas tillsammans
+
+
+## Egenskapsslag i v0.6.0
+
+Tärningskrönikan registrerar nu även Dragonbane `attributeTest`.
+
+Egenskapsslag får samma grundstatistik som färdighetsslag:
+
+- resultat och målvärde
+- lyckat eller misslyckat
+- Drake och Demon
+- Boon och Bane
+- Push och koppling till originalslaget
+
+I rollpersonsöversikten visas de tillsammans med övriga tester, till exempel som `Egenskap: STY` eller systemets lokaliserade namn.
+
+v0.6.0 flyttar dessutom den vertikala scrollningen till Foundrys egen `.window-content`, så statistikfönstret ska kunna scrollas även när innehållet är högre än tillgänglig skärmyta.
