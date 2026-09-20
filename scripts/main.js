@@ -148,11 +148,15 @@ function extractD20Results(rolls = []) {
 }
 
 function pushKey(data) {
+  const testIdentity =
+    data.skillUuid ??
+    (data.attribute ? `attribute:${data.attribute}` : "");
+
   return [
     data.userId ?? "",
     data.messageType ?? "",
     data.actorUuid ?? "",
-    data.skillUuid ?? ""
+    testIdentity
   ].join("|");
 }
 
@@ -165,6 +169,7 @@ function storePendingPush(data) {
     actorUuid: data.actorUuid ?? null,
     messageType: data.messageType ?? null,
     skillUuid: data.skillUuid ?? null,
+    attribute: data.attribute ?? null,
     sourceResult: data.sourceResult ?? null,
     sourceOutcome: data.sourceOutcome ?? null,
     capturedAt: Number(data.capturedAt) || Date.now()
@@ -188,6 +193,7 @@ function rememberPushFromClick(event) {
     actorUuid: sourceMessage.system?.actorUuid ?? null,
     messageType: sourceMessage.type ?? null,
     skillUuid: sourceMessage.system?.skillUuid ?? null,
+    attribute: sourceMessage.system?.attribute ?? null,
     sourceResult: sourceMessage.system?.result ?? null,
     sourceOutcome: getDragonbaneOutcome(sourceMessage.system ?? {}),
     capturedAt: Date.now()
@@ -207,7 +213,8 @@ function consumeMatchingPush(message, userId) {
     userId,
     messageType: message.type,
     actorUuid: system.actorUuid ?? null,
-    skillUuid: system.skillUuid ?? null
+    skillUuid: system.skillUuid ?? null,
+    attribute: system.attribute ?? null
   });
 
   const pending = pendingPushes.get(key);
@@ -223,13 +230,12 @@ function consumeMatchingPush(message, userId) {
   return pending;
 }
 
-function summarizeDragonbaneSkillTest(message, userId, rolls) {
+function summarizeDragonbaneTestBase(message, userId, rolls) {
   const system = message.system ?? {};
   const d20 = extractD20Results(rolls);
   const pushedFrom = consumeMatchingPush(message, userId);
 
   return {
-    kind: "skillTest",
     messageId: message.id ?? null,
     timestamp: message.timestamp ?? Date.now(),
 
@@ -239,10 +245,6 @@ function summarizeDragonbaneSkillTest(message, userId, rolls) {
     actorId: message.speaker?.actor ?? null,
     actorName: message.speaker?.alias ?? null,
     actorUuid: system.actorUuid ?? null,
-
-    skillName: system.skillName ?? null,
-    skillUuid: system.skillUuid ?? null,
-    skillValue: system.skillValue ?? null,
 
     target: system.target ?? null,
     result: system.result ?? rolls?.[0]?.total ?? null,
@@ -267,6 +269,38 @@ function summarizeDragonbaneSkillTest(message, userId, rolls) {
     formula: rolls?.[0]?.formula ?? null,
     d20,
     rolls
+  };
+}
+
+function summarizeDragonbaneSkillTest(message, userId, rolls) {
+  const system = message.system ?? {};
+
+  return {
+    kind: "skillTest",
+    ...summarizeDragonbaneTestBase(message, userId, rolls),
+
+    skillName: system.skillName ?? null,
+    skillUuid: system.skillUuid ?? null,
+    skillValue: system.skillValue ?? null
+  };
+}
+
+function summarizeDragonbaneAttributeTest(message, userId, rolls) {
+  const system = message.system ?? {};
+  const attribute = system.attribute ?? null;
+  const localizedAttribute = attribute
+    ? game.i18n.localize(`DoD.attributes.${attribute}`)
+    : null;
+
+  return {
+    kind: "attributeTest",
+    ...summarizeDragonbaneTestBase(message, userId, rolls),
+
+    attribute,
+    attributeName:
+      localizedAttribute && localizedAttribute !== `DoD.attributes.${attribute}`
+        ? localizedAttribute
+        : attribute?.toUpperCase?.() ?? null
   };
 }
 
@@ -464,14 +498,18 @@ function calculateSessionStatistics(session) {
     if ((Number(entry.boons) || 0) > 0) actor.boons += 1;
     if ((Number(entry.banes) || 0) > 0) actor.banes += 1;
 
-    const skillName = entry.skillName || "Okänd färdighet";
-    const skillKey =
+    const testName =
+      entry.skillName ||
+      (entry.attributeName ? `Egenskap: ${entry.attributeName}` : null) ||
+      "Okänt test";
+    const testKey =
       entry.skillUuid ||
-      `skill:${skillName.toLocaleLowerCase("sv")}`;
+      (entry.attribute ? `attribute:${entry.attribute}` : null) ||
+      `test:${testName.toLocaleLowerCase("sv")}`;
 
-    const skill = actor.skills.get(skillKey) ?? {
-      id: skillKey,
-      name: skillName,
+    const skill = actor.skills.get(testKey) ?? {
+      id: testKey,
+      name: testName,
       rolls: 0,
       successes: 0,
       failures: 0,
@@ -487,12 +525,12 @@ function calculateSessionStatistics(session) {
     if (entry.isDemon === true) skill.demons += 1;
     if (entry.wasPushed === true) skill.pushes += 1;
 
-    actor.skills.set(skillKey, skill);
+    actor.skills.set(testKey, skill);
     actorMap.set(actorKey, actor);
 
-    const sessionSkillKey = skillName.toLocaleLowerCase("sv");
+    const sessionSkillKey = testName.toLocaleLowerCase("sv");
     const sessionSkill = sessionSkillMap.get(sessionSkillKey) ?? {
-      name: skillName,
+      name: testName,
       rolls: 0
     };
     sessionSkill.rolls += 1;
@@ -562,7 +600,7 @@ function calculateSessionStatistics(session) {
     mostUsedSkill
       ? {
           icon: "fa-solid fa-hand-sparkles",
-          title: "Mest använd färdighet",
+          title: "Mest använda test",
           primary: mostUsedSkill.name,
           detail: `${mostUsedSkill.rolls} slag`
         }
@@ -900,6 +938,16 @@ Hooks.on("createChatMessage", (message, options, userId) => {
 
     console.log(
       `Tärningskrönikan | Dragonbane skillTest:\n${JSON.stringify(entry, null, 2)}`
+    );
+
+    void recordSessionEntry(entry);
+  }
+
+  if (game.system.id === "dragonbane" && message.type === "attributeTest") {
+    const entry = summarizeDragonbaneAttributeTest(message, userId, rolls);
+
+    console.log(
+      `Tärningskrönikan | Dragonbane attributeTest:\n${JSON.stringify(entry, null, 2)}`
     );
 
     void recordSessionEntry(entry);
