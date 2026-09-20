@@ -650,6 +650,259 @@ function calculateSessionStatistics(session) {
   };
 }
 
+function getDiscordWebhookUrl() {
+  return String(game.settings.get(MODULE_ID, "discordWebhookUrl") ?? "").trim();
+}
+
+function isDiscordWebhookUrl(value) {
+  if (!value) return false;
+
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    const allowedHost =
+      hostname === "discord.com" ||
+      hostname.endsWith(".discord.com") ||
+      hostname === "discordapp.com" ||
+      hostname.endsWith(".discordapp.com");
+
+    return (
+      url.protocol === "https:" &&
+      allowedHost &&
+      /^\/api(?:\/v\d+)?\/webhooks\/[^/]+\/[^/]+/.test(url.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function configureDiscordWebhook() {
+  if (!game.user?.isGM) {
+    ui.notifications?.warn("Endast GM kan konfigurera Discord-export.");
+    return false;
+  }
+
+  const existing = getDiscordWebhookUrl();
+  const escapedExisting = foundry.utils.escapeHTML(existing);
+  const dialogV2 = foundry.applications?.api?.DialogV2;
+
+  if (!dialogV2?.prompt) {
+    ui.notifications?.error("Tärningskrönikan kunde inte öppna Discord-inställningen.");
+    return false;
+  }
+
+  const value = await dialogV2.prompt({
+    window: { title: "Konfigurera Discord" },
+    content: `
+      <form class="tarningskronikan-discord-form">
+        <div class="form-group">
+          <label for="tk-discord-webhook">Discord webhook-URL</label>
+          <input
+            id="tk-discord-webhook"
+            name="discordWebhook"
+            type="password"
+            value="${escapedExisting}"
+            autocomplete="off"
+            placeholder="https://discord.com/api/webhooks/..."
+          >
+          <p class="hint">
+            Webhooken sparas endast för din Foundry-användare i den här världen.
+            Lämna fältet tomt för att ta bort den.
+          </p>
+        </div>
+      </form>
+    `,
+    ok: {
+      icon: "fa-brands fa-discord",
+      label: "Spara",
+      callback: (_event, button) =>
+        button.form?.elements?.discordWebhook?.value?.trim() ?? ""
+    }
+  });
+
+  if (value === null || value === undefined) return false;
+
+  if (value && !isDiscordWebhookUrl(value)) {
+    ui.notifications?.error(
+      "Webhook-URL:en ser inte ut som en giltig Discord-webhook."
+    );
+    return false;
+  }
+
+  await game.settings.set(MODULE_ID, "discordWebhookUrl", value);
+  refreshSessionPanel();
+
+  ui.notifications?.info(
+    value
+      ? "Tärningskrönikan sparade Discord-webhooken."
+      : "Tärningskrönikan tog bort Discord-webhooken."
+  );
+
+  return !!value;
+}
+
+function buildDiscordSessionPayload(session, stats) {
+  const fields = [
+    {
+      name: "🎲 Registrerade slag",
+      value: String(stats.total),
+      inline: true
+    },
+    {
+      name: "✅ Lyckade",
+      value: `${stats.successes} (${stats.successRate} %)`,
+      inline: true
+    },
+    {
+      name: "❌ Misslyckade",
+      value: String(stats.failures),
+      inline: true
+    },
+    {
+      name: "🐉 Drakar",
+      value: String(stats.dragons),
+      inline: true
+    },
+    {
+      name: "💀 Demoner",
+      value: String(stats.demons),
+      inline: true
+    },
+    {
+      name: "🔄 Pushar",
+      value: String(stats.pushed),
+      inline: true
+    },
+    {
+      name: "⬆️ Boon",
+      value: String(stats.boonRolls),
+      inline: true
+    },
+    {
+      name: "⬇️ Bane",
+      value: String(stats.baneRolls),
+      inline: true
+    }
+  ];
+
+  if (stats.highlights?.length) {
+    fields.push({
+      name: "📜 Ur kvällens krönika",
+      value: stats.highlights
+        .map((item) => `**${item.title}:** ${item.primary} · ${item.detail}`)
+        .join("\n")
+        .slice(0, 1024),
+      inline: false
+    });
+  }
+
+  for (const actor of stats.actors.slice(0, 8)) {
+    fields.push({
+      name: `🛡️ ${actor.name}`.slice(0, 256),
+      value: [
+        `${actor.rolls} slag · ${actor.successRate} % lyckade`,
+        `🐉 ${actor.dragons} · 💀 ${actor.demons} · 🔄 ${actor.pushes}`
+      ].join("\n"),
+      inline: true
+    });
+  }
+
+  if (stats.actors.length > 8) {
+    fields.push({
+      name: "Fler rollpersoner",
+      value: `+${stats.actors.length - 8} ytterligare i Foundry-rapporten`,
+      inline: false
+    });
+  }
+
+  const endTime = session.endedAt ?? Date.now();
+  const descriptionParts = [
+    `Startad ${formatDateTime(session.startedAt)}`,
+    session.endedAt ? `Avslutad ${formatDateTime(session.endedAt)}` : "Sessionen pågår",
+    session.endedAt ? formatDuration(session.startedAt, session.endedAt) : ""
+  ].filter(Boolean);
+
+  return {
+    username: "Tärningskrönikan",
+    allowed_mentions: { parse: [] },
+    embeds: [
+      {
+        title: `🐉 ${session.name}`.slice(0, 256),
+        description: descriptionParts.join(" · ").slice(0, 2048),
+        color: 9136717,
+        fields: fields.slice(0, 25),
+        footer: {
+          text: `Tärningskrönikan v${game.modules.get(MODULE_ID)?.version ?? ""}`
+        },
+        timestamp: new Date(endTime).toISOString()
+      }
+    ]
+  };
+}
+
+async function sendSessionToDiscord(sessionId) {
+  if (!game.user?.isGM) {
+    ui.notifications?.warn("Endast GM kan skicka Tärningskrönikan till Discord.");
+    return false;
+  }
+
+  const store = getSessionStore();
+  const session = store.sessions.find((item) => item.id === sessionId);
+
+  if (!session) {
+    ui.notifications?.error("Tärningskrönikan kunde inte hitta sessionen.");
+    return false;
+  }
+
+  let webhookUrl = getDiscordWebhookUrl();
+
+  if (!webhookUrl) {
+    const configured = await configureDiscordWebhook();
+    if (!configured) return false;
+    webhookUrl = getDiscordWebhookUrl();
+  }
+
+  if (!isDiscordWebhookUrl(webhookUrl)) {
+    ui.notifications?.error(
+      "Den sparade Discord-webhooken är ogiltig. Konfigurera den på nytt."
+    );
+    return false;
+  }
+
+  const stats = calculateSessionStatistics(session);
+  const payload = buildDiscordSessionPayload(session, stats);
+  const endpoint = new URL(webhookUrl);
+  endpoint.searchParams.set("wait", "true");
+
+  try {
+    const response = await fetch(endpoint.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(
+        `Discord svarade ${response.status} ${response.statusText}${detail ? `: ${detail}` : ""}`
+      );
+    }
+
+    ui.notifications?.info(
+      `Tärningskrönikan skickade "${session.name}" till Discord.`
+    );
+    return true;
+  } catch (error) {
+    console.error("Tärningskrönikan | Discord-export misslyckades", error);
+    ui.notifications?.error(
+      "Kunde inte skicka till Discord. Se webbläsarkonsolen för detaljer."
+    );
+    return false;
+  }
+}
+
 class TarningskronikanStatistics extends foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
 ) {
@@ -694,7 +947,9 @@ class TarningskronikanStatistics extends foundry.applications.api.HandlebarsAppl
 
     return {
       missing: false,
+      sessionId: session.id,
       sessionName: session.name,
+      discordConfigured: !!getDiscordWebhookUrl(),
       active: session.id === store.activeSessionId,
       startedAt: formatDateTime(session.startedAt),
       endedAt: session.endedAt ? formatDateTime(session.endedAt) : "",
@@ -703,6 +958,47 @@ class TarningskronikanStatistics extends foundry.applications.api.HandlebarsAppl
         : "",
       ...stats
     };
+  }
+
+  async _onRender(context, options) {
+    await super._onRender(context, options);
+
+    const scope =
+      this.window?.content ??
+      this.element ??
+      document.getElementById(this.id);
+
+    if (!scope) return;
+
+    if (this._listenerScope === scope && this._clickHandler) return;
+
+    if (this._listenerScope && this._clickHandler) {
+      this._listenerScope.removeEventListener("click", this._clickHandler);
+    }
+
+    this._listenerScope = scope;
+    this._clickHandler = async (event) => {
+      const button = event.target?.closest?.("[data-action]");
+      if (!button) return;
+
+      const action = button.dataset.action;
+
+      if (action === "configure-discord") {
+        await configureDiscordWebhook();
+        this.render({ force: true });
+      }
+
+      if (action === "send-discord") {
+        button.disabled = true;
+        try {
+          await sendSessionToDiscord(this.sessionId);
+        } finally {
+          button.disabled = false;
+        }
+      }
+    };
+
+    scope.addEventListener("click", this._clickHandler);
   }
 }
 
@@ -890,6 +1186,14 @@ function openSessionPanel() {
 }
 
 Hooks.once("init", () => {
+  game.settings.register(MODULE_ID, "discordWebhookUrl", {
+    name: "Tärningskrönikan Discord webhook",
+    scope: "user",
+    config: false,
+    type: String,
+    default: ""
+  });
+
   game.settings.register(MODULE_ID, "sessionStore", {
     name: "Tärningskrönikan sessionsdata",
     scope: "world",
@@ -917,7 +1221,9 @@ Hooks.once("ready", () => {
     status: sessionStatus,
     latestSession,
     open: openSessionPanel,
-    statistics: openStatistics
+    statistics: openStatistics,
+    configureDiscord: configureDiscordWebhook,
+    sendToDiscord: sendSessionToDiscord
   };
 
   console.log(
