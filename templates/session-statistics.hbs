@@ -105,6 +105,43 @@
       </div>
     </section>
 
+    <section class="tk-discord-section">
+      <div class="tk-section-heading">
+        <div>
+          <div class="tk-stats-eyebrow">Publicera krönikan</div>
+          <h2>Discord</h2>
+          <p>
+            {{#if discordConfigured}}
+              En webhook är konfigurerad för din GM-användare.
+            {{else}}
+              Ingen Discord-webhook är konfigurerad ännu.
+            {{/if}}
+          </p>
+        </div>
+      </div>
+
+      <div class="tk-discord-actions">
+        <button type="button" data-action="configure-discord" class="tk-secondary">
+          <i class="fa-solid fa-gear"></i>
+          {{#if discordConfigured}}Ändra webhook{{else}}Konfigurera Discord{{/if}}
+        </button>
+
+        <button
+          type="button"
+          data-action="send-discord"
+          data-session-id="{{sessionId}}"
+          class="tk-primary tk-discord-send"
+        >
+          <i class="fa-brands fa-discord"></i>
+          Skicka till Discord
+        </button>
+      </div>
+
+      <p class="tk-discord-note">
+        Rapporten skickas först när du trycker på knappen. Ingen automatisk publicering sker.
+      </p>
+    </section>
+
     {{#if actors.length}}
       <section class="tk-stats-section">
         <div class="tk-section-heading">

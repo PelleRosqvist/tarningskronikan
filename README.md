@@ -2,7 +2,7 @@
 
 Dice statistics and session reports for Foundry VTT, with Dragonbane / Drakar och Demoner support.
 
-> **Status:** Early prototype. Version 0.6.0 records Dragonbane skill and attribute tests and includes per-character statistics.
+> **Status:** Early prototype. Version 0.7.0 can publish a session summary directly to Discord through a webhook.
 
 ## Installera prototypen
 
@@ -83,3 +83,25 @@ Egenskapsslag får samma grundstatistik som färdighetsslag:
 I rollpersonsöversikten visas de tillsammans med övriga tester, till exempel som `Egenskap: STY` eller systemets lokaliserade namn.
 
 v0.6.0 flyttar dessutom den vertikala scrollningen till Foundrys egen `.window-content`, så statistikfönstret ska kunna scrollas även när innehållet är högre än tillgänglig skärmyta.
+
+
+## Discord-export i v0.7.0
+
+Tärningskrönikan kan skicka statistikrapporten direkt till en Discord-kanal utan någon extra Foundry-modul.
+
+1. Skapa en webhook i Discord för den kanal som ska ta emot krönikan.
+2. Öppna en Tärningskrönikan-statistikrapport som GM.
+3. Klicka **Konfigurera Discord** och klistra in webhook-URL:en.
+4. Klicka **Skicka till Discord**.
+
+Webhook-URL:en sparas som en Foundry `user`-setting för den GM-användare som konfigurerar den och är inte en del av Tärningskrönikans world-data.
+
+Discord-meddelandet skickas som en embed med:
+
+- sessionens namn och tid
+- totalt antal slag och lyckandegrad
+- Drakar, Demoner, Pushar, Boon och Bane
+- krönikehöjdpunkter
+- en kompakt sammanfattning per rollperson
+
+Publicering är manuell. Att avsluta en session skickar inget automatiskt till Discord.
