@@ -351,3 +351,182 @@
     font-size: 0.8rem;
   }
 }
+
+
+.tk-chronicle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid var(--color-border-light-2, rgba(255, 255, 255, 0.16));
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(130, 92, 45, 0.08), rgba(0, 0, 0, 0.03));
+}
+
+.tk-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.tk-highlight-card {
+  display: flex;
+  min-height: 7.2rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border-light-2, rgba(255, 255, 255, 0.14));
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.07);
+  text-align: center;
+}
+
+.tk-highlight-card i {
+  margin-bottom: 0.2rem;
+  font-size: 1.25rem;
+  opacity: 0.8;
+}
+
+.tk-highlight-card > span {
+  font-size: 0.76rem;
+  opacity: 0.72;
+}
+
+.tk-highlight-card strong {
+  line-height: 1.15;
+}
+
+.tk-highlight-card small {
+  opacity: 0.72;
+}
+
+.tk-character-list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.tk-character-card {
+  overflow: hidden;
+  border: 1px solid var(--color-border-light-2, rgba(255, 255, 255, 0.15));
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.tk-character-card summary {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.4fr) minmax(360px, 2.6fr);
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.tk-character-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.tk-character-card summary::after {
+  content: "▾";
+  position: absolute;
+  right: 0.85rem;
+  opacity: 0.55;
+  transform: rotate(-90deg);
+  transition: transform 120ms ease;
+}
+
+.tk-character-card[open] summary::after {
+  transform: rotate(0deg);
+}
+
+.tk-character-card summary {
+  position: relative;
+  padding-right: 2rem;
+}
+
+.tk-character-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.tk-character-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tk-character-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(58px, 1fr));
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.tk-character-summary span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  opacity: 0.82;
+}
+
+.tk-character-summary b {
+  font-size: 0.95rem;
+  opacity: 1;
+}
+
+.tk-skill-table {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem;
+}
+
+.tk-skill-row {
+  display: grid;
+  grid-template-columns: minmax(145px, 2fr) repeat(6, minmax(48px, 0.65fr));
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.38rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.035);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tk-skill-row > :not(:first-child) {
+  text-align: center;
+}
+
+.tk-skill-header {
+  background: rgba(0, 0, 0, 0.11);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+@media (max-width: 780px) {
+  .tk-highlight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tk-character-card summary {
+    grid-template-columns: 1fr;
+  }
+
+  .tk-character-summary {
+    grid-template-columns: repeat(5, minmax(48px, 1fr));
+  }
+
+  .tk-skill-table {
+    overflow-x: auto;
+  }
+
+  .tk-skill-row {
+    min-width: 650px;
+  }
+}
