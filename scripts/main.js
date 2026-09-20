@@ -650,6 +650,14 @@ function calculateSessionStatistics(session) {
   };
 }
 
+function escapeHtmlAttribute(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function getDiscordWebhookUrl() {
   return String(game.settings.get(MODULE_ID, "discordWebhookUrl") ?? "").trim();
 }
@@ -683,7 +691,7 @@ async function configureDiscordWebhook() {
   }
 
   const existing = getDiscordWebhookUrl();
-  const escapedExisting = foundry.utils.escapeHTML(existing);
+  const escapedExisting = escapeHtmlAttribute(existing);
   const dialogV2 = foundry.applications?.api?.DialogV2;
 
   if (!dialogV2?.prompt) {
