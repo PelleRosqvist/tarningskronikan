@@ -424,6 +424,7 @@ function calculateSessionStatistics(session) {
   }));
 
   const actorMap = new Map();
+  const sessionSkillMap = new Map();
 
   for (const entry of entries) {
     for (const value of entry.d20?.kept ?? []) {
@@ -432,20 +433,70 @@ function calculateSessionStatistics(session) {
       }
     }
 
-    const actorName = entry.actorName || "Okänd";
-    const actor = actorMap.get(actorName) ?? {
-      name: actorName,
+    const actorKey =
+      entry.actorUuid ||
+      (entry.actorId ? `actor:${entry.actorId}` : null) ||
+      (entry.actorName ? `name:${entry.actorName}` : "unknown");
+
+    const actor = actorMap.get(actorKey) ?? {
+      id: actorKey,
+      uuid: entry.actorUuid ?? null,
+      name: entry.actorName || "Okänd",
       rolls: 0,
       successes: 0,
+      failures: 0,
       dragons: 0,
-      demons: 0
+      demons: 0,
+      pushes: 0,
+      boons: 0,
+      banes: 0,
+      skills: new Map()
     };
+
+    if (entry.actorName) actor.name = entry.actorName;
 
     actor.rolls += 1;
     if (entry.success === true) actor.successes += 1;
+    if (entry.success === false) actor.failures += 1;
     if (entry.isDragon === true) actor.dragons += 1;
     if (entry.isDemon === true) actor.demons += 1;
-    actorMap.set(actorName, actor);
+    if (entry.wasPushed === true) actor.pushes += 1;
+    if ((Number(entry.boons) || 0) > 0) actor.boons += 1;
+    if ((Number(entry.banes) || 0) > 0) actor.banes += 1;
+
+    const skillName = entry.skillName || "Okänd färdighet";
+    const skillKey =
+      entry.skillUuid ||
+      `skill:${skillName.toLocaleLowerCase("sv")}`;
+
+    const skill = actor.skills.get(skillKey) ?? {
+      id: skillKey,
+      name: skillName,
+      rolls: 0,
+      successes: 0,
+      failures: 0,
+      dragons: 0,
+      demons: 0,
+      pushes: 0
+    };
+
+    skill.rolls += 1;
+    if (entry.success === true) skill.successes += 1;
+    if (entry.success === false) skill.failures += 1;
+    if (entry.isDragon === true) skill.dragons += 1;
+    if (entry.isDemon === true) skill.demons += 1;
+    if (entry.wasPushed === true) skill.pushes += 1;
+
+    actor.skills.set(skillKey, skill);
+    actorMap.set(actorKey, actor);
+
+    const sessionSkillKey = skillName.toLocaleLowerCase("sv");
+    const sessionSkill = sessionSkillMap.get(sessionSkillKey) ?? {
+      name: skillName,
+      rolls: 0
+    };
+    sessionSkill.rolls += 1;
+    sessionSkillMap.set(sessionSkillKey, sessionSkill);
   }
 
   const maxD20Count = Math.max(1, ...d20Counts.map((item) => item.count));
@@ -455,7 +506,92 @@ function calculateSessionStatistics(session) {
   }));
 
   const actors = [...actorMap.values()]
-    .sort((a, b) => b.rolls - a.rolls || a.name.localeCompare(b.name, "sv"));
+    .map((actor) => ({
+      ...actor,
+      successRate: actor.rolls
+        ? Math.round((actor.successes / actor.rolls) * 100)
+        : 0,
+      skills: [...actor.skills.values()]
+        .map((skill) => ({
+          ...skill,
+          successRate: skill.rolls
+            ? Math.round((skill.successes / skill.rolls) * 100)
+            : 0
+        }))
+        .sort(
+          (a, b) =>
+            b.rolls - a.rolls ||
+            a.name.localeCompare(b.name, "sv")
+        )
+    }))
+    .sort(
+      (a, b) =>
+        b.rolls - a.rolls ||
+        a.name.localeCompare(b.name, "sv")
+    );
+
+  function actorLeader(field) {
+    if (!actors.length) return null;
+
+    const max = Math.max(...actors.map((actor) => Number(actor[field]) || 0));
+    if (max <= 0) return null;
+
+    const names = actors
+      .filter((actor) => (Number(actor[field]) || 0) === max)
+      .map((actor) => actor.name);
+
+    return {
+      names: names.join(" & "),
+      count: max,
+      tied: names.length > 1
+    };
+  }
+
+  const mostUsedSkill = [...sessionSkillMap.values()]
+    .sort(
+      (a, b) =>
+        b.rolls - a.rolls ||
+        a.name.localeCompare(b.name, "sv")
+    )[0] ?? null;
+
+  const dragonLeader = actorLeader("dragons");
+  const demonLeader = actorLeader("demons");
+  const pushLeader = actorLeader("pushes");
+
+  const highlights = [
+    mostUsedSkill
+      ? {
+          icon: "fa-solid fa-hand-sparkles",
+          title: "Mest använd färdighet",
+          primary: mostUsedSkill.name,
+          detail: `${mostUsedSkill.rolls} slag`
+        }
+      : null,
+    dragonLeader
+      ? {
+          icon: "fa-solid fa-dragon",
+          title: "Flest Drakar",
+          primary: dragonLeader.names,
+          detail: `${dragonLeader.count} ${dragonLeader.count === 1 ? "Drake" : "Drakar"}`
+        }
+      : null,
+    demonLeader
+      ? {
+          icon: "fa-solid fa-skull",
+          title: "Flest Demoner",
+          primary: demonLeader.names,
+          detail: `${demonLeader.count} ${demonLeader.count === 1 ? "Demon" : "Demoner"}`
+        }
+      : null,
+    pushLeader
+      ? {
+          icon: "fa-solid fa-arrow-rotate-right",
+          title: "Flest Pushar",
+          primary: pushLeader.names,
+          detail: `${pushLeader.count} ${pushLeader.count === 1 ? "Push" : "Pushar"}`
+        }
+      : null
+  ].filter(Boolean);
 
   const total = entries.length;
   const successRate = total ? Math.round((successes / total) * 100) : 0;
@@ -471,7 +607,8 @@ function calculateSessionStatistics(session) {
     boonRolls,
     baneRolls,
     distribution,
-    actors
+    actors,
+    highlights
   };
 }
 
